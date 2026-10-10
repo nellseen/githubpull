@@ -65,47 +65,55 @@ export class GitHubDeployerBot {
     return Markup.keyboard([
       ['🚀 Auto Deploy Folder', '📦 Unzip & Deploy ZIP'],
       ['📥 Clone Repo ke VPS', '🗑 List & Hapus Repo'],
-      ['ℹ️ Cek Status Bot'],
+      ['ℹ️ Cek Status Bot', '🔄 Ganti Akun GitHub'],
     ]).resize();
   }
 
-  public async promptAccountSelection(ctx: any, nextAction: string) {
-    const chatId = ctx.chat.id;
-    const session = this.getSession(chatId);
+  /**
+   * Prompts user to choose an account on /start or when changing accounts.
+   * Features will ONLY appear after user selects an account.
+   */
+  public async promptInitialAccountSelection(ctx: any, isChanging: boolean = false) {
+    const chatId = ctx.chat?.id || ctx.from?.id;
+    this.accounts = await loadGithubAccounts();
 
     if (this.accounts.length === 0) {
-      await ctx.reply('❌ Tidak ada token GitHub valid yang ditemukan di file .env!');
+      await ctx.reply(
+        '<b>❌ Tidak ada token GitHub valid yang ditemukan!</b>\n\n' +
+        'Silakan masukkan <code>GH_TOKENS</code> atau <code>GH_TOKEN</code> di file .env terlebih dahulu.',
+        { parse_mode: 'HTML', ...Markup.removeKeyboard() }
+      );
       return;
     }
 
-    if (this.accounts.length === 1) {
-      session.selected_account = this.accounts[0];
-      return await this.executeNextStep(ctx, nextAction);
-    }
-
-    session.pending_action = nextAction;
-
     const buttons = this.accounts.map((acc, i) =>
-      Markup.button.callback(acc.name, `selectacc_${i}`)
+      Markup.button.callback(`👤 ${acc.name}`, `selectacc_init_${i}`)
     );
 
-    const keyboard = Markup.inlineKeyboard(
-      buttons.map((b) => [b])
-    );
+    const keyboard = Markup.inlineKeyboard(buttons.map((b) => [b]));
 
-    await ctx.reply(
-      '<b>👤 Pilih Akun GitHub yang ingin digunakan:</b>',
-      { parse_mode: 'HTML', ...keyboard }
-    );
+    const header = isChanging
+      ? '<b>🔄 Ganti Akun GitHub:</b>\n\nSilakan pilih akun GitHub yang ingin Anda aktifkan:'
+      : '<b>🤖 Selamat Datang di GitHub Manager & Deployer!</b>\n\n' +
+        `📁 Base Directory: <code>${this.baseDir}</code>\n` +
+        `💬 Chat ID Kamu: <code>${chatId}</code>\n\n` +
+        '⚠️ <b>Silakan pilih Akun GitHub terlebih dahulu:</b>\n' +
+        '<i>(Fitur bot akan terbuka otomatis setelah Anda memilih akun)</i>';
+
+    if (ctx.callbackQuery) {
+      await ctx.editMessageText(header, { parse_mode: 'HTML', ...keyboard });
+    } else {
+      await ctx.reply(header, { parse_mode: 'HTML', ...keyboard });
+    }
   }
 
   public async executeNextStep(ctx: any, action: string) {
     const chatId = ctx.chat.id;
     const session = this.getSession(chatId);
-    const acc = session.selected_account || this.accounts[0];
+    const acc = session.selected_account;
 
     if (!acc) {
-      await ctx.reply('❌ Akun GitHub belum dipilih!');
+      await this.promptInitialAccountSelection(ctx);
       return;
     }
 
@@ -140,10 +148,10 @@ export class GitHubDeployerBot {
   public async sendRepoList(ctx: any) {
     const chatId = ctx.chat.id;
     const session = this.getSession(chatId);
-    const acc = session.selected_account || this.accounts[0];
+    const acc = session.selected_account;
 
     if (!acc) {
-      await ctx.reply('❌ Akun GitHub tidak ditemukan.');
+      await this.promptInitialAccountSelection(ctx);
       return;
     }
 
@@ -248,48 +256,70 @@ export class GitHubDeployerBot {
   public registerHandlers() {
     if (!this.bot) return;
 
-    // Command /start
+    // Command /start: WAJIB pilih akun dulu, setelah milih baru muncul fiturnya
     this.bot.command('start', async (ctx) => {
       this.userSessions.delete(ctx.chat.id);
-      await ctx.reply(
-        '<b>🤖 GitHub Manager & Deployer Multi-Account + WebSocket!</b>\n\n' +
-        `📁 Base Directory: <code>${this.baseDir}</code>\n` +
-        `💬 Chat ID Kamu: <code>${ctx.chat.id}</code>\n\n` +
-        'Pilih menu di bawah ini:',
-        { parse_mode: 'HTML', ...this.getMainKeyboard() }
-      );
+      await this.promptInitialAccountSelection(ctx, false);
     });
 
-    // Menu handlers
+    // Menu handlers (dilindungi guard: wajib memilih akun terlebih dahulu)
     this.bot.hears('🚀 Auto Deploy Folder', async (ctx) => {
-      this.userSessions.delete(ctx.chat.id);
-      await this.promptAccountSelection(ctx, 'deploy_folder');
+      const session = this.getSession(ctx.chat.id);
+      if (!session.selected_account) {
+        await ctx.reply('⚠️ Silakan pilih akun GitHub terlebih dahulu!');
+        await this.promptInitialAccountSelection(ctx);
+        return;
+      }
+      await this.executeNextStep(ctx, 'deploy_folder');
     });
 
     this.bot.hears('📦 Unzip & Deploy ZIP', async (ctx) => {
-      this.userSessions.delete(ctx.chat.id);
-      await this.promptAccountSelection(ctx, 'unzip_zip');
+      const session = this.getSession(ctx.chat.id);
+      if (!session.selected_account) {
+        await ctx.reply('⚠️ Silakan pilih akun GitHub terlebih dahulu!');
+        await this.promptInitialAccountSelection(ctx);
+        return;
+      }
+      await this.executeNextStep(ctx, 'unzip_zip');
     });
 
     this.bot.hears('📥 Clone Repo ke VPS', async (ctx) => {
-      this.userSessions.delete(ctx.chat.id);
-      await this.promptAccountSelection(ctx, 'clone_repo');
+      const session = this.getSession(ctx.chat.id);
+      if (!session.selected_account) {
+        await ctx.reply('⚠️ Silakan pilih akun GitHub terlebih dahulu!');
+        await this.promptInitialAccountSelection(ctx);
+        return;
+      }
+      await this.executeNextStep(ctx, 'clone_repo');
     });
 
     this.bot.hears('🗑 List & Hapus Repo', async (ctx) => {
-      this.userSessions.delete(ctx.chat.id);
-      await this.promptAccountSelection(ctx, 'list_repo');
+      const session = this.getSession(ctx.chat.id);
+      if (!session.selected_account) {
+        await ctx.reply('⚠️ Silakan pilih akun GitHub terlebih dahulu!');
+        await this.promptInitialAccountSelection(ctx);
+        return;
+      }
+      await this.executeNextStep(ctx, 'list_repo');
+    });
+
+    this.bot.hears('🔄 Ganti Akun GitHub', async (ctx) => {
+      await this.promptInitialAccountSelection(ctx, true);
     });
 
     this.bot.hears('ℹ️ Cek Status Bot', async (ctx) => {
-      this.userSessions.delete(ctx.chat.id);
+      const session = this.getSession(ctx.chat.id);
       const activeAccs = this.accounts.length > 0
         ? this.accounts.map((a) => a.username).join(', ')
         : 'Tidak ada akun terdeteksi';
+      const selectedAcc = session.selected_account
+        ? `<code>${session.selected_account.username}</code> (${session.selected_account.email})`
+        : '<i>Belum dipilih (Ketik /start untuk memilih)</i>';
 
       await ctx.reply(
         `<b>✅ Status Bot:</b> Online\n` +
-        `<b>👤 Akun GitHub Terdeteksi:</b> ${activeAccs}\n` +
+        `<b>👤 Akun Aktif:</b> ${selectedAcc}\n` +
+        `<b>👥 Semua Akun Terdeteksi:</b> ${activeAccs}\n` +
         `<b>📁 Base Directory:</b> <code>${this.baseDir}</code>\n` +
         `<b>📡 WS Subscribers:</b> <code>${wsManager.getSubscribersCount()}</code>\n` +
         `<b>🆔 Your Chat ID:</b> <code>${ctx.chat.id}</code>`,
@@ -305,6 +335,24 @@ export class GitHubDeployerBot {
 
       await ctx.answerCbQuery();
 
+      // Handle Initial Account Selection (on /start or 🔄 Ganti Akun)
+      if (data.startsWith('selectacc_init_')) {
+        const idx = parseInt(data.replace('selectacc_init_', ''), 10);
+        if (idx < this.accounts.length) {
+          const acc = this.accounts[idx];
+          session.selected_account = acc;
+
+          // Baru setelah milih akun, fiturnya ditampilkan!
+          await ctx.reply(
+            `<b>✅ Akun Aktif Berhasil Dipilih:</b> <code>${acc.username}</code> (${acc.email})\n\n` +
+            `🚀 <b>Fitur bot telah dibuka!</b> Silakan pilih menu di bawah ini untuk memulai:`,
+            { parse_mode: 'HTML', ...this.getMainKeyboard() }
+          );
+        }
+        return;
+      }
+
+      // Legacy/Fallback callback format
       if (data.startsWith('selectacc_')) {
         const idx = parseInt(data.replace('selectacc_', ''), 10);
         if (idx < this.accounts.length) {
@@ -315,7 +363,7 @@ export class GitHubDeployerBot {
         return;
       }
 
-      const acc = session.selected_account || this.accounts[0];
+      const acc = session.selected_account;
 
       if (data === 'confirm_deploy') {
         const fullPath = session.target_path;
@@ -334,6 +382,8 @@ export class GitHubDeployerBot {
           }, onLog)
         );
         this.userSessions.delete(chatId);
+        // Tetap simpan selected_account
+        session.selected_account = acc;
       } else if (data.startsWith('askdelete_')) {
         const repoName = data.replace('askdelete_', '');
         const confirmKeyboard = Markup.inlineKeyboard([
@@ -380,7 +430,9 @@ export class GitHubDeployerBot {
       const session = this.getSession(chatId);
 
       if (!session.selected_account) {
-        session.selected_account = this.accounts[0];
+        await ctx.reply('⚠️ Silakan pilih akun GitHub terlebih dahulu sebelum upload ZIP!');
+        await this.promptInitialAccountSelection(ctx);
+        return;
       }
 
       const defaultRepoName = path.basename(fileName, path.extname(fileName));
@@ -399,7 +451,7 @@ export class GitHubDeployerBot {
         session.temp_zip_name = fileName;
 
         await ctx.reply(
-          `<b>📦 File ZIP Diterima!</b>\n\n` +
+          `<b>📦 File ZIP Diterima! (Akun: <code>${session.selected_account.username}</code>)</b>\n\n` +
           `Ketik <b>nama repository baru</b> yang ingin dibuat di GitHub:\n` +
           `• Rekomendasi nama: <code>${defaultRepoName}</code>`,
           { parse_mode: 'HTML' }
@@ -419,7 +471,7 @@ export class GitHubDeployerBot {
       // Handle Waiting ZIP Repo Name
       if (userState === 'WAITING_ZIP_REPO_NAME') {
         const zipPath = session.temp_zip_path;
-        const acc = session.selected_account || this.accounts[0];
+        const acc = session.selected_account;
 
         if (!zipPath || !fs.existsSync(zipPath) || !acc) {
           await ctx.reply('❌ Sesi habis atau akun tidak valid. Silakan ulangi upload ZIP.');
@@ -440,7 +492,9 @@ export class GitHubDeployerBot {
         );
 
         try { fs.unlinkSync(zipPath); } catch {}
-        this.userSessions.delete(chatId);
+        session.state = null;
+        session.temp_zip_path = undefined;
+        session.temp_zip_name = undefined;
         return;
       }
 
@@ -471,7 +525,7 @@ export class GitHubDeployerBot {
           [Markup.button.callback(`🚀 Deploy / Update '${repoName}'`, 'confirm_deploy')],
         ]);
 
-        const acc = session.selected_account || this.accounts[0];
+        const acc = session.selected_account;
         await ctx.reply(
           `<b>📁 Target Path:</b> <code>${fullPath}</code>\n` +
           `<b>👤 Akun GitHub:</b> <code>${acc?.username}</code>\n\n` +
@@ -485,7 +539,13 @@ export class GitHubDeployerBot {
       if (userState === 'WAITING_CLONE_URL') {
         const cloneUrl = text;
         session.state = null;
-        const acc = session.selected_account || this.accounts[0];
+        const acc = session.selected_account;
+
+        if (!acc) {
+          await ctx.reply('❌ Akun GitHub belum dipilih!');
+          await this.promptInitialAccountSelection(ctx);
+          return;
+        }
 
         if (!validateGitHubUrl(cloneUrl)) {
           await ctx.reply('❌ URL GitHub tidak valid! Contoh: https://github.com/username/repo');
@@ -502,7 +562,6 @@ export class GitHubDeployerBot {
           }, onLog)
         );
 
-        this.userSessions.delete(chatId);
         return;
       }
     });

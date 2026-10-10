@@ -15,7 +15,7 @@ test('Feature Test: Telegram Bot Session & Keyboard Management', async () => {
   session1.state = 'WAITING_FOLDER_NAME';
   assert.equal(session2.state, undefined, 'Session 2 state must not be modified by Session 1');
 
-  // 2. Keyboard Markup Structure
+  // 2. Keyboard Markup Structure (termasuk tombol '🔄 Ganti Akun GitHub')
   const mainKeyboard: any = bot.getMainKeyboard();
   assert.equal(Boolean(mainKeyboard.reply_markup), true);
 
@@ -26,6 +26,7 @@ test('Feature Test: Telegram Bot Session & Keyboard Management', async () => {
     '📥 Clone Repo ke VPS',
     '🗑 List & Hapus Repo',
     'ℹ️ Cek Status Bot',
+    '🔄 Ganti Akun GitHub',
   ];
 
   for (const btn of expectedButtons) {
@@ -42,11 +43,14 @@ test('Feature Test: Telegram Bot Session & Keyboard Management', async () => {
   };
   bot.accounts = [mockAcc];
 
-  // 4. Test State Machine Transition
+  // 4. Initial state before choosing account
+  assert.equal(session1.selected_account, undefined, 'Account must not be selected initially');
+
+  // 5. Selecting account unlocks feature state
+  session1.selected_account = mockAcc;
   session1.state = 'WAITING_ZIP_REPO_NAME';
   session1.temp_zip_path = '/tmp/fake.zip';
-  session1.selected_account = mockAcc;
 
-  assert.equal(session1.state, 'WAITING_ZIP_REPO_NAME');
   assert.equal(session1.selected_account.username, 'dev-user');
+  assert.equal(session1.state, 'WAITING_ZIP_REPO_NAME');
 });

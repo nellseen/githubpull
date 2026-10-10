@@ -202,20 +202,36 @@ async function runAllRuntimeTests() {
       '📥 Clone Repo ke VPS',
       '🗑 List & Hapus Repo',
       'ℹ️ Cek Status Bot',
+      '🔄 Ganti Akun GitHub',
     ];
     for (const r of required) {
       if (!buttons.includes(r)) throw new Error(`Missing button: ${r}`);
     }
   });
 
-  await runTest('Telegram Bot', 'Session State Isolation & Action Transitions', () => {
+  await runTest('Telegram Bot', 'Session State Isolation & Account-First Selection Flow', () => {
     const bot = new GitHubDeployerBot();
     const s1 = bot.getSession(1001);
     const s2 = bot.getSession(1002);
+    
+    // Initial state: No account selected yet
+    if (s1.selected_account !== undefined) throw new Error('Account must not be selected initially');
+    
+    // Select account
+    s1.selected_account = {
+      index: 0,
+      name: 'Acc 1',
+      username: 'octocat',
+      email: 'octo@github.com',
+      token: 'ghp_test',
+    };
     s1.state = 'WAITING_ZIP_REPO_NAME';
     s1.temp_zip_name = 'my-project.zip';
+
     if (s2.state === 'WAITING_ZIP_REPO_NAME') throw new Error('State leakage between sessions');
+    if (s2.selected_account !== undefined) throw new Error('Account leakage between sessions');
     if (s1.temp_zip_name !== 'my-project.zip') throw new Error('Session data not preserved');
+    if (s1.selected_account.username !== 'octocat') throw new Error('Selected account not preserved');
   });
 
   // --- SUMMARY REPORT ---
