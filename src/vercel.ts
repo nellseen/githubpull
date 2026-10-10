@@ -142,6 +142,27 @@ function collectFilesForDeployment(rootDirectory: string): { file: string; data:
   return files;
 }
 
+function detectFramework(folderPath: string): string | null {
+  try {
+    const pkgPath = path.join(folderPath, 'package.json');
+    if (fs.existsSync(pkgPath)) {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf-8'));
+      const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+      if (deps['next']) return 'nextjs';
+      if (deps['@remix-run/react']) return 'remix';
+      if (deps['nuxt'] || deps['nuxt3']) return 'nuxtjs';
+      if (deps['astro']) return 'astro';
+      if (deps['@sveltejs/kit'] || deps['svelte']) return 'sveltekit';
+      if (deps['vue']) return 'vue';
+      if (deps['react-scripts']) return 'create-react-app';
+      if (deps['vite']) return 'vite';
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
 /**
  * Deploys folder to Vercel via Vercel Deployments API v13
  */
@@ -180,9 +201,15 @@ export async function deployFolderToVercel(
     .replace(/\s+/g, '-')
     .replace(/[^a-z0-9_\-\.]/g, '-');
 
+  const framework = detectFramework(folderPath);
+  if (framework) {
+    log(`Framework terdeteksi: ${framework}`);
+  }
+
   log(`Menginisialisasi deployment ke Vercel (Project: ${cleanProjectName})...`);
 
-  const deployRes = await fetch(`${VERCEL_API_BASE}/v13/deployments`, {
+  const deployUrl = `${VERCEL_API_BASE}/v13/deployments?skipAutoDetectionConfirmation=1`;
+  const deployRes = await fetch(deployUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${account.token}`,
@@ -193,6 +220,9 @@ export async function deployFolderToVercel(
       name: cleanProjectName,
       files,
       target: 'production',
+      projectSettings: {
+        framework,
+      },
     }),
   });
 

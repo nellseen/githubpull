@@ -305,7 +305,16 @@ export class GitHubDeployerBot {
       }
     };
 
-    const result = await actionFn(onLog);
+    let result: { success: boolean; logs: string[]; finalOutput: string; url?: string };
+    try {
+      result = await actionFn(onLog);
+    } catch (err: any) {
+      result = {
+        success: false,
+        logs,
+        finalOutput: `Error: ${err.message}`,
+      };
+    }
     const finalLogs = logs.slice(-20).join('\n') || result.finalOutput;
 
     try {
