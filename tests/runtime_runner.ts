@@ -202,7 +202,7 @@ async function runAllRuntimeTests() {
       '📥 Clone Repo ke VPS',
       '🗑 List & Hapus Repo',
       'ℹ️ Cek Status Bot',
-      '🔄 Ganti Akun GitHub',
+      '🔄 Ganti Akun / Platform',
     ];
     for (const r of required) {
       if (!buttons.includes(r)) throw new Error(`Missing button: ${r}`);
@@ -232,6 +232,58 @@ async function runAllRuntimeTests() {
     if (s2.selected_account !== undefined) throw new Error('Account leakage between sessions');
     if (s1.temp_zip_name !== 'my-project.zip') throw new Error('Session data not preserved');
     if (s1.selected_account.username !== 'octocat') throw new Error('Selected account not preserved');
+  });
+
+  // --- 6. VERCEL MULTI-ACCOUNT & AUTOMATION TESTS ---
+  console.log('\n▲ 6. Vercel Multi-Account & Deployment Engine');
+  await runTest('Vercel', 'Vercel Multi-Token Loader & Validator', async () => {
+    const { loadVercelAccounts } = await import('../src/vercel');
+    const accounts = await loadVercelAccounts('');
+    if (!Array.isArray(accounts)) throw new Error('Expected array from loadVercelAccounts');
+    
+    // Parsing multiple dummy tokens without error
+    const multi = await loadVercelAccounts('token1, token2', true);
+    if (!Array.isArray(multi)) throw new Error('Expected array for multi tokens');
+  });
+
+  await runTest('Vercel', 'Vercel Keyboard Structure (No Clone Feature)', () => {
+    const bot = new GitHubDeployerBot();
+    const vKeyboard: any = bot.getVercelKeyboard();
+    const vButtons = vKeyboard.reply_markup.keyboard.flat();
+
+    const expectedVercelButtons = [
+      '▲ Deploy Folder ke Vercel',
+      '📦 Unzip & Deploy ke Vercel',
+      '🗑 List & Hapus Project Vercel',
+      'ℹ️ Cek Status Bot',
+      '🔄 Ganti Akun / Platform',
+    ];
+
+    for (const b of expectedVercelButtons) {
+      if (!vButtons.includes(b)) throw new Error(`Missing Vercel button: ${b}`);
+    }
+
+    // Verify clone is NOT present in Vercel menu
+    const hasClone = vButtons.some((b: string) => b.toLowerCase().includes('clone'));
+    if (hasClone) throw new Error('Clone feature should NOT exist in Vercel menu');
+  });
+
+  await runTest('Vercel', 'Vercel Session Isolation & State Machine', () => {
+    const bot = new GitHubDeployerBot();
+    const session = bot.getSession(9999);
+    session.active_platform = 'vercel';
+    session.selected_vercel_account = {
+      index: 0,
+      name: 'Vercel 1',
+      username: 'vercel-dev',
+      email: 'dev@vercel.com',
+      token: 'vc_test123',
+    };
+    session.state = 'WAITING_VERCEL_FOLDER_NAME';
+
+    if (session.active_platform !== 'vercel') throw new Error('Platform mismatch');
+    if (session.selected_vercel_account.username !== 'vercel-dev') throw new Error('Account mismatch');
+    if (session.state !== 'WAITING_VERCEL_FOLDER_NAME') throw new Error('State mismatch');
   });
 
   // --- SUMMARY REPORT ---

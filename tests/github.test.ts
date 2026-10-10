@@ -69,7 +69,7 @@ test('Feature Test: Multi-Account Token Parser (loadGithubAccounts)', async () =
 
   // Test parsing comma-separated tokens (invalid tokens gracefully handled without crash)
   const invalidTokens = 'ghp_dummy1, ghp_dummy2';
-  const accounts = await loadGithubAccounts(invalidTokens);
+  const accounts = await loadGithubAccounts(invalidTokens, true);
   assert.equal(Array.isArray(accounts), true);
   // Both dummy tokens will fail GitHub API 401 gracefully, returning empty array
   assert.equal(accounts.length, 0);

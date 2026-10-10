@@ -17,7 +17,7 @@ export function buildAuthenticatedUrl(cloneUrl: string, account: GitHubAccount):
   return trimmed;
 }
 
-export async function fetchAccountDetails(token: string, index: number): Promise<GitHubAccount | null> {
+export async function fetchAccountDetails(token: string, index: number, silent: boolean = false): Promise<GitHubAccount | null> {
   const headers = {
     Authorization: `token ${token}`,
     Accept: 'application/vnd.github.v3+json',
@@ -27,7 +27,9 @@ export async function fetchAccountDetails(token: string, index: number): Promise
   try {
     const res = await fetch('https://api.github.com/user', { headers });
     if (!res.ok) {
-      console.warn(`[GitHub] Token #${index + 1} validation failed (Status: ${res.status})`);
+      if (!silent && process.env.DEBUG === 'true') {
+        console.warn(`[GitHub] Token #${index + 1} validation status: ${res.status}`);
+      }
       return null;
     }
 
@@ -78,12 +80,14 @@ export async function fetchAccountDetails(token: string, index: number): Promise
     console.log(`[GitHub] Berhasil mendeteksi akun: ${username}`);
     return account;
   } catch (err: any) {
-    console.error(`[GitHub] Error saat mendeteksi token #${index + 1}: ${err.message}`);
+    if (!silent && process.env.DEBUG === 'true') {
+      console.warn(`[GitHub] Error token #${index + 1}: ${err.message}`);
+    }
     return null;
   }
 }
 
-export async function loadGithubAccounts(tokensRaw?: string): Promise<GitHubAccount[]> {
+export async function loadGithubAccounts(tokensRaw?: string, silent: boolean = false): Promise<GitHubAccount[]> {
   const envRaw = tokensRaw !== undefined ? tokensRaw : (process.env.GH_TOKENS || '');
   let tokens: string[] = [];
 
@@ -96,7 +100,7 @@ export async function loadGithubAccounts(tokensRaw?: string): Promise<GitHubAcco
 
   const accounts: GitHubAccount[] = [];
   for (let i = 0; i < tokens.length; i++) {
-    const acc = await fetchAccountDetails(tokens[i], i);
+    const acc = await fetchAccountDetails(tokens[i], i, silent);
     if (acc) {
       accounts.push(acc);
     }

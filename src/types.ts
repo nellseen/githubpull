@@ -14,14 +14,41 @@ export interface GitHubAccount {
   };
 }
 
+export interface VercelAccount {
+  index: number;
+  name: string;
+  username: string;
+  email: string;
+  token: string;
+  id?: string;
+  avatar?: string;
+}
+
+export interface VercelProject {
+  id: string;
+  name: string;
+  framework?: string | null;
+  updatedAt?: number;
+  url?: string;
+}
+
 export interface UserSessionData {
-  state?: 'WAITING_FOLDER_NAME' | 'WAITING_ZIP_REPO_NAME' | 'WAITING_CLONE_URL' | null;
+  active_platform?: 'github' | 'vercel';
+  state?: 
+    | 'WAITING_FOLDER_NAME' 
+    | 'WAITING_ZIP_REPO_NAME' 
+    | 'WAITING_CLONE_URL'
+    | 'WAITING_VERCEL_FOLDER_NAME'
+    | 'WAITING_VERCEL_ZIP_PROJECT_NAME'
+    | null;
   selected_account?: GitHubAccount;
+  selected_vercel_account?: VercelAccount;
   pending_action?: string;
   temp_zip_path?: string;
   temp_zip_name?: string;
   target_path?: string;
   repo_name?: string;
+  vercel_project_name?: string;
 }
 
 export interface DeployFolderOptions {

@@ -26,7 +26,7 @@ test('Feature Test: Telegram Bot Session & Keyboard Management', async () => {
     '📥 Clone Repo ke VPS',
     '🗑 List & Hapus Repo',
     'ℹ️ Cek Status Bot',
-    '🔄 Ganti Akun GitHub',
+    '🔄 Ganti Akun / Platform',
   ];
 
   for (const btn of expectedButtons) {
