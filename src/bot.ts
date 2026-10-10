@@ -17,7 +17,8 @@ import {
   listVercelProjects,
   deleteVercelProject,
   deployFolderToVercel,
-  deployZipToVercel
+  deployZipToVercel,
+  scaffoldStarterProject
 } from './vercel';
 import { 
   deployFolderWorkflow, 
@@ -38,6 +39,11 @@ export class GitHubDeployerBot {
     this.baseDir = baseDir || process.env.BASE_DIR || path.join(process.cwd(), 'deployments');
     if (!fs.existsSync(this.baseDir)) {
       fs.mkdirSync(this.baseDir, { recursive: true });
+    }
+    // Seed sample-vercel starter project if not already present
+    const sampleVercel = path.join(this.baseDir, 'sample-vercel');
+    if (!fs.existsSync(sampleVercel)) {
+      scaffoldStarterProject(sampleVercel, 'sample-vercel');
     }
   }
 
@@ -82,8 +88,8 @@ export class GitHubDeployerBot {
   public getVercelKeyboard() {
     return Markup.keyboard([
       ['▲ Deploy Folder ke Vercel', '📦 Unzip & Deploy ke Vercel'],
-      ['🗑 List & Hapus Project Vercel', 'ℹ️ Cek Status Bot'],
-      ['🔄 Ganti Akun / Platform'],
+      ['⚡ Deploy Starter HTML', '🗑 List & Hapus Project Vercel'],
+      ['ℹ️ Cek Status Bot', '🔄 Ganti Akun / Platform'],
     ]).resize();
   }
 
@@ -429,6 +435,24 @@ export class GitHubDeployerBot {
       );
     });
 
+    this.bot.hears('⚡ Deploy Starter HTML', async (ctx) => {
+      const session = this.getSession(ctx.chat.id);
+      if (!session.selected_vercel_account || session.active_platform !== 'vercel') {
+        await ctx.reply('⚠️ Silakan pilih akun Vercel terlebih dahulu!');
+        await this.promptInitialAccountSelection(ctx);
+        return;
+      }
+
+      session.state = 'WAITING_VERCEL_STARTER_NAME';
+      await ctx.reply(
+        `<b>⚡ Deploy Starter HTML ke Vercel (Akun: <code>${session.selected_vercel_account.username}</code>)</b>\n\n` +
+        `Ketik <b>nama project</b> yang ingin dibuat:\n` +
+        `• Contoh: <code>my-landing-page</code> atau <code>test-site</code>\n\n` +
+        `<i>(Bot akan otomatis menyiapkan file <b>index.html</b> standar Vercel dan langsung men-deploy-nya secara live!)</i>`,
+        { parse_mode: 'HTML' }
+      );
+    });
+
     this.bot.hears('🗑 List & Hapus Project Vercel', async (ctx) => {
       const session = this.getSession(ctx.chat.id);
       if (!session.selected_vercel_account || session.active_platform !== 'vercel') {
@@ -759,6 +783,33 @@ export class GitHubDeployerBot {
 
         try { fs.unlinkSync(zipPath); } catch {}
         session.temp_zip_path = undefined;
+        return;
+      }
+
+      // Vercel Waiting Starter Project Name
+      if (userState === 'WAITING_VERCEL_STARTER_NAME') {
+        const vacc = session.selected_vercel_account;
+        if (!vacc) {
+          await ctx.reply('❌ Akun Vercel belum dipilih!');
+          return;
+        }
+
+        const projectName = text.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9_\-\.]/g, '-');
+        const projectDir = path.join(this.baseDir, projectName);
+
+        session.state = null;
+        scaffoldStarterProject(projectDir, projectName);
+
+        await this.runWithLiveLog(ctx, `Deploy Starter ke Vercel (${projectName})`, async (onLog) => {
+          const res = await deployFolderToVercel(vacc, projectDir, projectName, onLog);
+          return {
+            success: res.success,
+            logs: res.logs,
+            finalOutput: `Live di ${res.url}`,
+            url: res.url,
+          };
+        });
+
         return;
       }
 

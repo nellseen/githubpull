@@ -254,6 +254,7 @@ async function runAllRuntimeTests() {
     const expectedVercelButtons = [
       '▲ Deploy Folder ke Vercel',
       '📦 Unzip & Deploy ke Vercel',
+      '⚡ Deploy Starter HTML',
       '🗑 List & Hapus Project Vercel',
       'ℹ️ Cek Status Bot',
       '🔄 Ganti Akun / Platform',
@@ -266,6 +267,19 @@ async function runAllRuntimeTests() {
     // Verify clone is NOT present in Vercel menu
     const hasClone = vButtons.some((b: string) => b.toLowerCase().includes('clone'));
     if (hasClone) throw new Error('Clone feature should NOT exist in Vercel menu');
+  });
+
+  await runTest('Vercel', 'Vercel Starter HTML Scaffolding (scaffoldStarterProject)', async () => {
+    const { scaffoldStarterProject } = await import('../src/vercel');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'scaffold-test-'));
+    try {
+      const p = scaffoldStarterProject(tmp, 'quick-start');
+      if (!fs.existsSync(p)) throw new Error('index.html not created');
+      const html = fs.readFileSync(p, 'utf-8');
+      if (!html.includes('quick-start')) throw new Error('Project name not embedded');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   await runTest('Vercel', 'Vercel Session Isolation & State Machine', () => {
@@ -284,6 +298,24 @@ async function runAllRuntimeTests() {
     if (session.active_platform !== 'vercel') throw new Error('Platform mismatch');
     if (session.selected_vercel_account.username !== 'vercel-dev') throw new Error('Account mismatch');
     if (session.state !== 'WAITING_VERCEL_FOLDER_NAME') throw new Error('State mismatch');
+  });
+
+  await runTest('Vercel', 'vercel.json Detection & Configuration Parsing', async () => {
+    const { readVercelConfig, detectFramework } = await import('../src/vercel');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vc-json-runner-'));
+    try {
+      fs.writeFileSync(
+        path.join(tmp, 'vercel.json'),
+        JSON.stringify({ framework: 'astro', buildCommand: 'astro build', outputDirectory: 'dist' })
+      );
+      const cfg = readVercelConfig(tmp);
+      if (!cfg) throw new Error('vercel.json was not detected');
+      if (cfg.framework !== 'astro') throw new Error(`Expected framework astro, got ${cfg.framework}`);
+      if (cfg.buildCommand !== 'astro build') throw new Error('buildCommand not parsed');
+      if (detectFramework(tmp) !== 'astro') throw new Error('detectFramework did not prioritize vercel.json');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 
   // --- SUMMARY REPORT ---

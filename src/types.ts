@@ -34,12 +34,13 @@ export interface VercelProject {
 
 export interface UserSessionData {
   active_platform?: 'github' | 'vercel';
-  state?: 
-    | 'WAITING_FOLDER_NAME' 
-    | 'WAITING_ZIP_REPO_NAME' 
+  state?:
+    | 'WAITING_FOLDER_NAME'
+    | 'WAITING_ZIP_REPO_NAME'
     | 'WAITING_CLONE_URL'
     | 'WAITING_VERCEL_FOLDER_NAME'
     | 'WAITING_VERCEL_ZIP_PROJECT_NAME'
+    | 'WAITING_VERCEL_STARTER_NAME'
     | null;
   selected_account?: GitHubAccount;
   selected_vercel_account?: VercelAccount;
