@@ -1,0 +1,8 @@
+{
+  "name": "GitHub Pull & Multi-Account Deployer",
+  "description": "Multi-account GitHub repository manager, folder deployer, ZIP extractor, and Git clone automation dashboard with real-time log streaming.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
