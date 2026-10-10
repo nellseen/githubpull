@@ -18,4 +18,15 @@ Migrated from Python (`github.py`) to a modern Node.js full-stack React + Expres
 ## Getting Started
 
 1. Set your GitHub tokens in environment variables (`GH_TOKENS=ghp_...`) or add them directly in the UI under **Accounts & Bot**.
-2. Run `npm run dev` to start the server and dashboard on port 3000.
+2. Install dependencies:
+   ```bash
+   pnpm install
+   # or
+   npm install
+   ```
+3. Run the development server and dashboard on port 3000:
+   ```bash
+   pnpm dev
+   # or
+   npm run dev
+   ```
