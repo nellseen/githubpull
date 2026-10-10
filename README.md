@@ -1,32 +1,70 @@
-# GitHub Pull & Multi-Account Deployer
+# GitHub Pull & Deployer Telegram Bot
 
-A multi-account GitHub repository manager, folder deployer, ZIP extractor, and Git clone automation dashboard with real-time log streaming.
+A pure Telegram Bot & WebSocket automation engine for multi-account GitHub deployments, auto folder git pushing, ZIP extraction & deployment, and repository management.
 
-Migrated from Python (`github.py`) to a modern Node.js full-stack React + Express + Vite architecture.
+## Fitur Bot
 
-## Features
+1. **🚀 Auto Deploy Folder**:
+   - Memilih folder atau sub-path di dalam base directory (`deployments/`).
+   - Membersihkan file sampah otomatis (`.DS_Store`, `__pycache__`, dll).
+   - Memeriksa/membuat repository di GitHub via API jika belum ada.
+   - `git init`, `git config`, remote branch, commit, dan push otomatis dengan live log streaming.
 
-- **Multi-Account GitHub Support**: Connect multiple GitHub accounts using Personal Access Tokens (`GH_TOKENS`), inspect rate limits, switch between accounts seamlessly, and test new tokens.
-- **Auto Deploy Folder**: Select any workspace or local folder, initialize Git, configure user credentials, create remote GitHub repository automatically if missing, commit, and push.
-- **Unzip & Deploy ZIP**: Drag-and-drop ZIP archive upload, automatic extraction, directory flattening, junk file cleanup (`.DS_Store`, `__pycache__`, etc.), and direct push to GitHub.
-- **Clone / Pull Repositories**: Clone public or private repositories into the workspace or run `git pull` if the directory already exists.
-- **Repository Manager**: Explore repositories with search, visibility filtering (Public / Private / Forks), clone URL copy, and safe deletion confirmation modals.
-- **Real-Time Live Logs**: Terminal stream for live command execution with colored ANSI logging, autoscroll, and copy actions.
-- **WebSocket Streaming**: Integrated WebSocket server at `/ws` on port 3000.
-- **Telegram Bot Integration**: Supports `TELEGRAM_BOT_TOKEN` for status checks and notifications.
+2. **📦 Unzip & Deploy ZIP**:
+   - Menerima kiriman file `.zip` langsung di chat Telegram.
+   - Ekstraksi otomatis dan perataan struktur folder (directory flattening jika bertingkat).
+   - Pembersihan sampah dan push otomatis ke GitHub repository.
 
-## Getting Started
+3. **📥 Clone Repo ke VPS / Local**:
+   - Validasi URL repository GitHub (`https://github.com/owner/repo`).
+   - Auto-detect: Jika folder sudah ada, menjalankan `git pull`; jika belum, menjalankan `git clone` dengan kredensial token terautentikasi.
 
-1. Set your GitHub tokens in environment variables (`GH_TOKENS=ghp_...`) or add them directly in the UI under **Accounts & Bot**.
-2. Install dependencies:
-   ```bash
-   pnpm install
-   # or
-   npm install
-   ```
-3. Run the development server and dashboard on port 3000:
-   ```bash
-   pnpm dev
-   # or
-   npm run dev
-   ```
+4. **🗑 List & Hapus Repo**:
+   - Menampilkan daftar repository aktif akun GitHub pengguna dengan inline keyboard.
+   - Fitur hapus repository dengan konfirmasi tombol interaktif.
+
+5. **👤 Multi-Account GitHub Support**:
+   - Parsing token dari variabel lingkungan `GH_TOKENS` (dipisahkan koma) atau `GH_TOKEN`.
+   - Deteksi akun otomatis via GitHub API (username, email, quota).
+   - Tombol pemilihan akun interaktif saat deploy atau clone.
+
+6. **📡 WebSocket Live Streaming Server**:
+   - Terintegrasi di port 3000 (`/ws`) untuk memancarkan log eksekusi langsung ke subscriber WebSocket dan dapat me-relay log ke Telegram.
+
+## Menjalankan Bot & Pengujian
+
+### Instalasi Dependensi
+```bash
+pnpm install
+# atau
+npm install
+```
+
+### Menjalankan Bot
+```bash
+pnpm dev
+# atau
+npm run dev
+```
+
+### Menjalankan Runtime Test Suite
+Setiap fitur bot memiliki pengujian runtime terisolasi:
+```bash
+pnpm test:runtime
+# atau
+npm run test:runtime
+```
+Juga dapat menjalankan pengujian berbasis native `node:test`:
+```bash
+pnpm test
+# atau
+npm test
+```
+
+## Environment Variables (`.env`)
+```env
+GH_TOKENS=ghp_token1,ghp_token2
+TELEGRAM_BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrSTUvwxYZ
+BASE_DIR=/app/applet/deployments
+PORT=3000
+```

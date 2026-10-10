@@ -3,7 +3,7 @@ export interface GitHubAccount {
   name: string;
   username: string;
   email: string;
-  tokenMasked?: string;
+  token: string;
   avatar_url?: string;
   public_repos?: number;
   total_private_repos?: number;
@@ -14,46 +14,43 @@ export interface GitHubAccount {
   };
 }
 
-export interface RepoItem {
-  id: number;
-  name: string;
-  full_name: string;
-  html_url: string;
-  description: string | null;
-  private: boolean;
-  fork: boolean;
-  stargazers_count: number;
-  forks_count: number;
-  updated_at: string;
-  default_branch: string;
-  size: number;
-  language: string | null;
-  clone_url: string;
-  ssh_url: string;
+export interface UserSessionData {
+  state?: 'WAITING_FOLDER_NAME' | 'WAITING_ZIP_REPO_NAME' | 'WAITING_CLONE_URL' | null;
+  selected_account?: GitHubAccount;
+  pending_action?: string;
+  temp_zip_path?: string;
+  temp_zip_name?: string;
+  target_path?: string;
+  repo_name?: string;
 }
 
-export interface WorkspaceFolder {
-  name: string;
-  relativePath: string;
-  fullPath: string;
-  hasGit: boolean;
-  fileCount: number;
-  updatedAt: string;
+export interface DeployFolderOptions {
+  account: GitHubAccount;
+  folderPath: string;
+  repoName: string;
+  isPrivate?: boolean;
+  commitMessage?: string;
 }
 
-export interface SystemStatus {
-  status: string;
-  accountsCount: number;
-  accounts: {
-    index: number;
-    name: string;
-    username: string;
-    avatar_url?: string;
-    public_repos?: number;
-  }[];
-  baseDir: string;
-  wsClientsCount: number;
-  telegramConfigured: boolean;
-  telegramBotName?: string | null;
-  serverTime: string;
+export interface DeployZipOptions {
+  account: GitHubAccount;
+  zipFilePath: string;
+  repoName: string;
+  targetBaseDir: string;
+  isPrivate?: boolean;
+  flatten?: boolean;
+  commitMessage?: string;
+}
+
+export interface CloneRepoOptions {
+  account: GitHubAccount;
+  cloneUrl: string;
+  targetBaseDir: string;
+  customFolderName?: string;
+}
+
+export interface ExecutionResult {
+  success: boolean;
+  logs: string[];
+  finalOutput: string;
 }

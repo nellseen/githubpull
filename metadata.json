@@ -1,6 +1,6 @@
 {
-  "name": "GitHub Pull & Multi-Account Deployer",
-  "description": "Multi-account GitHub repository manager, folder deployer, ZIP extractor, and Git clone automation dashboard with real-time log streaming.",
+  "name": "GitHub Pull & Deployer Telegram Bot",
+  "description": "Telegram Bot and multi-account GitHub automation engine for auto-deploying folders, unzipping & deploying ZIP archives, Git clone/pull, and repository management with WebSocket live streaming and runtime tests.",
   "permissions": [],
   "capabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
